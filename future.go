@@ -78,6 +78,22 @@ func (f *Future) Then(cf CompletionFunc) (nf *Future) {
 	return
 }
 
+func (f *Future) WaitUntilComplete() {
+	c := make(chan struct{})
+	defer close(c)
+	cmpl := func(interface {})interface {}{
+		c<-struct{}{}
+		return nil
+	}
+	f.Then(cmpl)
+	f.Err(cmpl)
+	<-c
+}
+
+func (f *Future) GetResult() interface {}{
+	return f.r
+}
+
 func (f *Future) Err(ef ErrFunc) (nf *Future) {
 	f.m.Lock()
 	defer f.m.Unlock()
