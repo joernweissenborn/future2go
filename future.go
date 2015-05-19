@@ -24,6 +24,9 @@ type Future struct {
 }
 
 func (f *Future) Complete(Data interface {}){
+	if f.IsComplete() {
+		panic("Completed complete future")
+	}
 	f.m.Lock()
 	defer f.m.Unlock()
 	f.r = Data
@@ -32,12 +35,42 @@ func (f *Future) Complete(Data interface {}){
 	}
 	f.c = true
 }
+func (f *Future) WaitUntilComplete(){
+	c :=make(chan struct{})
+	f.Then(func(interface {})interface{}{
+		c <- struct{}{}
+		return nil
+	})
+	<-c
+}
 
+func (f *Future) AsChan() chan interface {}{
+	c := make(chan interface {})
+	completer := func(d interface {})interface {}{
+		c<-d
+		return nil
+	}
+	f.Then(completer)
+	return c
+}
+
+func (f *Future) ErrAsFuture() *Future {
+	F := New()
+	c := func(err error) (interface {}, error){
+		F.Complete(err)
+		return nil,nil
+	}
+	f.Err(c)
+	return F
+}
 func (f *Future) IsComplete() bool {
 	return f.c
 }
 
 func (f *Future) CompleteError(err error){
+	if f.IsComplete() {
+		panic("Completed complete future")
+	}
 	f.m.Lock()
 	defer f.m.Unlock()
 	f.e = err
@@ -65,6 +98,9 @@ func deliverErr(fce futurecompletererror, e error){
 }
 
 func (f *Future) Then(cf CompletionFunc) (nf *Future) {
+	if f.m == nil {
+		panic("Then on uninitialized Future")
+	}
 	f.m.Lock()
 	defer f.m.Unlock()
 
