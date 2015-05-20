@@ -35,14 +35,6 @@ func (f *Future) Complete(Data interface {}){
 	}
 	f.c = true
 }
-func (f *Future) WaitUntilComplete(){
-	c :=make(chan struct{})
-	f.Then(func(interface {})interface{}{
-		c <- struct{}{}
-		return nil
-	})
-	<-c
-}
 
 func (f *Future) AsChan() chan interface {}{
 	c := make(chan interface {})
@@ -121,8 +113,12 @@ func (f *Future) WaitUntilComplete() {
 		c<-struct{}{}
 		return nil
 	}
+	ecmpl := func(error)(interface {},error){
+		c<-struct{}{}
+		return nil, nil
+	}
 	f.Then(cmpl)
-	f.Err(cmpl)
+	f.Err(ecmpl)
 	<-c
 }
 
